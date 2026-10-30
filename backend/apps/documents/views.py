@@ -1,5 +1,8 @@
+from django.conf import settings
+from django.db.models import Sum
 from rest_framework import status
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -9,7 +12,13 @@ from apps.organizations.permissions import IsOrganizationMember
 
 from .access import can_manage_document, visible_documents
 from .models import Document, DocumentAccess
-from .serializers import DocumentSerializer, GrantSerializer, VisibilitySerializer
+from .serializers import (
+    DocumentSerializer,
+    GrantSerializer,
+    UploadSerializer,
+    VisibilitySerializer,
+)
+from .validators import DuplicateUpload, PayloadTooLarge, sha256_of, validate_upload
 
 
 def get_visible_document(request, pk):
@@ -26,11 +35,59 @@ def require_manager(request, document):
 
 
 class DocumentListView(APIView):
+    """GET: list the documents you may see. POST: upload a new document."""
+
     permission_classes = [IsAuthenticated, IsOrganizationMember]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get(self, request):
         documents = visible_documents(request.membership).select_related("uploaded_by")
         return Response(DocumentSerializer(documents, many=True).data)
+
+    def post(self, request):
+        serializer = UploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        uploaded = data["file"]
+
+        clean_name, content_type = validate_upload(uploaded)
+        organization = request.organization
+
+        # Storage quota for the whole organization
+        used = (
+            Document.objects.filter(organization=organization).aggregate(total=Sum("size_bytes"))[
+                "total"
+            ]
+            or 0
+        )
+        if used + uploaded.size > settings.MAX_ORG_STORAGE_BYTES:
+            raise PayloadTooLarge("Your organization's storage limit has been reached.")
+
+        # Duplicate check: only against documents this user is allowed to see
+        content_hash = sha256_of(uploaded)
+        already_visible = visible_documents(request.membership).filter(content_hash=content_hash)
+        if already_visible.exists():
+            raise DuplicateUpload("You already have access to an identical file.")
+
+        document = Document(
+            organization=organization,
+            uploaded_by=request.user,
+            title=data.get("title") or clean_name,
+            original_filename=clean_name,
+            content_type=content_type,
+            size_bytes=uploaded.size,
+            content_hash=content_hash,
+            visibility=data["visibility"],
+            status=Document.Status.PENDING,
+        )
+        document.file.save(clean_name, uploaded, save=False)
+        try:
+            document.save()
+        except Exception:
+            document.file.delete(save=False)  # do not leave an orphan file behind
+            raise
+
+        return Response(DocumentSerializer(document).data, status=status.HTTP_201_CREATED)
 
 
 class DocumentDetailView(APIView):
@@ -48,6 +105,13 @@ class DocumentDetailView(APIView):
         document.visibility = serializer.validated_data["visibility"]
         document.save(update_fields=["visibility", "updated_at"])
         return Response(DocumentSerializer(document).data)
+
+    def delete(self, request, pk):
+        document = get_visible_document(request, pk)
+        require_manager(request, document)
+        document.file.delete(save=False)  # remove the file from storage first
+        document.delete()  # chunks and access grants are removed automatically
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class DocumentAccessView(APIView):

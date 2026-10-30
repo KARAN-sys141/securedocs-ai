@@ -29,3 +29,12 @@ class VisibilitySerializer(serializers.Serializer):
 
 class GrantSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
+
+
+class UploadSerializer(serializers.Serializer):
+    file = serializers.FileField(allow_empty_file=False)
+    title = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    visibility = serializers.ChoiceField(
+        choices=Document.Visibility.choices,
+        default=Document.Visibility.RESTRICTED,
+    )

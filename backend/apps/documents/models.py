@@ -47,6 +47,7 @@ class Document(TimeStampedModel):
     original_filename = models.CharField(max_length=255)
     content_type = models.CharField(max_length=100, blank=True)
     size_bytes = models.PositiveBigIntegerField(default=0)
+    content_hash = models.CharField(max_length=64, blank=True, db_index=True)
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
     error_message = models.TextField(blank=True)
     visibility = models.CharField(

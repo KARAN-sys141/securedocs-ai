@@ -104,3 +104,8 @@ CORS_ALLOWED_ORIGINS = [o for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").sp
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+
+# Upload limits (kept small so we stay inside free tiers)
+MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB per file
+MAX_ORG_STORAGE_BYTES = 200 * 1024 * 1024  # 200 MB per organization
