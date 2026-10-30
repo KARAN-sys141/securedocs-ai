@@ -1,4 +1,5 @@
 import os
+
 import psycopg
 import redis
 import requests
@@ -9,9 +10,7 @@ load_dotenv()  # reads the .env file
 
 def check_postgres():
     with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
-        row = conn.execute(
-            "SELECT extversion FROM pg_extension WHERE extname='vector'"
-        ).fetchone()
+        row = conn.execute("SELECT extversion FROM pg_extension WHERE extname='vector'").fetchone()
         print("Postgres OK | pgvector:", row[0] if row else "NOT ENABLED")
 
 
