@@ -5,3 +5,4 @@ Stack: Django, DRF, Postgres + pgvector, Redis, Gemini API.
 Status: Day 1, project setup.
 Status: Day 2, Django skeleton
 Status: Day 3, data models
+Status: Day 4, JWT auth and organization permissions
