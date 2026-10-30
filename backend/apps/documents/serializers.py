@@ -13,6 +13,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "title",
             "original_filename",
             "status",
+            "error_message",
             "visibility",
             "size_bytes",
             "uploaded_by",

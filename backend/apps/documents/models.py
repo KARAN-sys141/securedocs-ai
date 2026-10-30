@@ -50,6 +50,7 @@ class Document(TimeStampedModel):
     content_hash = models.CharField(max_length=64, blank=True, db_index=True)
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
     error_message = models.TextField(blank=True)
+    processing_started_at = models.DateTimeField(null=True, blank=True)
     visibility = models.CharField(
         max_length=14,
         choices=Visibility.choices,

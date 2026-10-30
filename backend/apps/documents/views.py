@@ -1,7 +1,9 @@
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Sum
+from django.utils import timezone
 from rest_framework import status
-from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.exceptions import APIException, NotFound, PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -18,6 +20,7 @@ from .serializers import (
     UploadSerializer,
     VisibilitySerializer,
 )
+from .tasks import enqueue_processing
 from .validators import DuplicateUpload, PayloadTooLarge, sha256_of, validate_upload
 
 
@@ -86,7 +89,8 @@ class DocumentListView(APIView):
         except Exception:
             document.file.delete(save=False)  # do not leave an orphan file behind
             raise
-
+        # Queue the job only after the database row is really saved
+        transaction.on_commit(lambda: enqueue_processing(document.id))
         return Response(DocumentSerializer(document).data, status=status.HTTP_201_CREATED)
 
 
@@ -155,3 +159,32 @@ class DocumentAccessDetailView(APIView):
         require_manager(request, document)
         DocumentAccess.objects.filter(document=document, user_id=user_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class InvalidState(APIException):
+    status_code = 409
+    default_detail = "The document is not in a state where this is allowed."
+    default_code = "invalid_state"
+
+
+class DocumentReprocessView(APIView):
+    """Queue a failed (or stuck pending) document again."""
+
+    permission_classes = [IsAuthenticated, IsOrganizationMember]
+
+    def post(self, request, pk):
+        document = get_visible_document(request, pk)
+        require_manager(request, document)
+
+        if document.status not in (Document.Status.FAILED, Document.Status.PENDING):
+            raise InvalidState("Only failed or pending documents can be reprocessed.")
+
+        Document.objects.filter(pk=document.pk).update(
+            status=Document.Status.PENDING,
+            error_message="",
+            processing_started_at=None,
+            updated_at=timezone.now(),
+        )
+        document.refresh_from_db()
+        transaction.on_commit(lambda: enqueue_processing(document.pk))
+        return Response(DocumentSerializer(document).data, status=status.HTTP_202_ACCEPTED)

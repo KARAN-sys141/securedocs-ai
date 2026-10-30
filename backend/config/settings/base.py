@@ -1,4 +1,5 @@
 import os
+import ssl
 from datetime import timedelta
 from pathlib import Path
 
@@ -109,3 +110,24 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Upload limits (kept small so we stay inside free tiers)
 MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB per file
 MAX_ORG_STORAGE_BYTES = 200 * 1024 * 1024  # 200 MB per organization
+
+# ---- Celery (background jobs) ----
+CELERY_BROKER_URL = os.environ.get("REDIS_URL", "memory://")
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+if CELERY_BROKER_URL.startswith("rediss://"):
+    CELERY_BROKER_USE_SSL = {"ssl_cert_reqs": ssl.CERT_REQUIRED}
+# If a worker dies, the message is handed to another worker after 15 minutes
+CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 900}
+# We store task state in Postgres, so no result backend (saves Redis commands)
+CELERY_RESULT_BACKEND = None
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_ENABLE_REMOTE_CONTROL = False  # less Redis chatter
+# true = run tasks immediately in the same process (no worker, no Redis commands)
+CELERY_TASK_ALWAYS_EAGER = os.environ.get("CELERY_EAGER", "false").lower() == "true"
+CELERY_TASK_EAGER_PROPAGATES = True
+
+# A document stuck in "processing" longer than this can be picked up again
+PROCESSING_STALE_MINUTES = 15

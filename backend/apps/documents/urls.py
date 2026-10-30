@@ -5,6 +5,7 @@ from .views import (
     DocumentAccessView,
     DocumentDetailView,
     DocumentListView,
+    DocumentReprocessView,
 )
 
 urlpatterns = [
@@ -19,5 +20,10 @@ urlpatterns = [
         "documents/<uuid:pk>/access/<int:user_id>/",
         DocumentAccessDetailView.as_view(),
         name="document-access-detail",
+    ),
+    path(
+        "documents/<uuid:pk>/reprocess/",
+        DocumentReprocessView.as_view(),
+        name="document-reprocess",
     ),
 ]
