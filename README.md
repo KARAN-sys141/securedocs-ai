@@ -4,3 +4,4 @@ A multi-tenant enterprise knowledge assistant. Employees ask questions and the A
 Stack: Django, DRF, Postgres + pgvector, Redis, Gemini API.
 Status: Day 1, project setup.
 Status: Day 2, Django skeleton
+Status: Day 3, data models

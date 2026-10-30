@@ -25,6 +25,8 @@ INSTALLED_APPS = [
     "corsheaders",
     "apps.core",
     "apps.accounts",
+    "apps.organizations",
+    "apps.documents",
 ]
 
 MIDDLEWARE = [
@@ -86,3 +88,6 @@ REST_FRAMEWORK = {
 }
 
 CORS_ALLOWED_ORIGINS = [o for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o]
+
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
