@@ -10,3 +10,12 @@ class MembershipSerializer(serializers.ModelSerializer):
     class Meta:
         model = Membership
         fields = ["organization_id", "organization_name", "role"]
+
+
+class AddMemberSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    role = serializers.ChoiceField(choices=Membership.Role.choices, default=Membership.Role.MEMBER)
+
+
+class RoleSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(choices=Membership.Role.choices)

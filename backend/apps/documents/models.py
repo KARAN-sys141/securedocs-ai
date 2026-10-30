@@ -96,3 +96,32 @@ class Chunk(models.Model):
 
     def __str__(self):
         return f"{self.document_id} #{self.chunk_index}"
+
+
+class DocumentAccess(TimeStampedModel):
+    """Gives one user permission to see one restricted document."""
+
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name="access_grants")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="document_grants",
+    )
+    granted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["document", "user"],
+                name="unique_grant_per_document_user",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user} -> {self.document}"
