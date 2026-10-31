@@ -7,13 +7,14 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.documents.models import Document
+from apps.documents.pdf_factory import build_pdf
 from apps.documents.tasks import process_document
 from apps.organizations.models import Membership, Organization
 
 pytestmark = pytest.mark.django_db
 
 PASSWORD = "Str0ng!Pass#2026"
-PDF_BYTES = b"%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF\n"
+PDF_BYTES = build_pdf([["Hello from the test document"]])
 User = get_user_model()
 
 
@@ -27,6 +28,7 @@ def make_document(org, status=Document.Status.PENDING, content=PDF_BYTES, **extr
         organization=org,
         title="Policy",
         original_filename="policy.pdf",
+        content_type="application/pdf",
         file=SimpleUploadedFile("policy.pdf", content),
         status=status,
         **extra,
@@ -118,7 +120,7 @@ def test_deleted_document_is_skipped(org):
 
 def test_transient_error_after_last_retry_marks_failed(org, monkeypatch):
     from apps.documents import tasks
-    from apps.documents.pipeline import TransientProcessingError
+    from apps.documents.exceptions import TransientProcessingError
 
     def always_fails(document):
         raise TransientProcessingError("api limit")

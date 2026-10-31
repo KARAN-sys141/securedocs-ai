@@ -131,3 +131,6 @@ CELERY_TASK_EAGER_PROPAGATES = True
 
 # A document stuck in "processing" longer than this can be picked up again
 PROCESSING_STALE_MINUTES = 15
+# Parsing limits (protect the worker from huge or malicious files)
+MAX_PDF_PAGES = 300
+MAX_DOCUMENT_CHARS = 1_000_000

@@ -6,8 +6,9 @@ from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 
+from .exceptions import PermanentProcessingError, TransientProcessingError
 from .models import Document
-from .pipeline import PermanentProcessingError, TransientProcessingError, run_pipeline
+from .pipeline import run_pipeline
 
 logger = logging.getLogger(__name__)
 

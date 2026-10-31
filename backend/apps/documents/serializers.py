@@ -16,6 +16,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "error_message",
             "visibility",
             "size_bytes",
+            "page_count",
             "uploaded_by",
             "created_at",
         ]

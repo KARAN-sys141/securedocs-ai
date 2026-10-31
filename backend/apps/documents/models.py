@@ -51,6 +51,8 @@ class Document(TimeStampedModel):
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
     error_message = models.TextField(blank=True)
     processing_started_at = models.DateTimeField(null=True, blank=True)
+    page_count = models.PositiveIntegerField(default=0)
+    char_count = models.PositiveBigIntegerField(default=0)
     visibility = models.CharField(
         max_length=14,
         choices=Visibility.choices,
@@ -63,6 +65,32 @@ class Document(TimeStampedModel):
 
     def __str__(self):
         return self.title
+
+
+class DocumentPage(models.Model):
+    """The cleaned text of one page. Day 9 cuts these pages into chunks."""
+
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name="pages")
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="pages",
+    )
+    page_number = models.PositiveIntegerField()
+    text = models.TextField()
+
+    class Meta:
+        ordering = ["document", "page_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["document", "page_number"],
+                name="unique_page_number_per_document",
+            )
+        ]
+        indexes = [models.Index(fields=["organization", "document"])]
+
+    def __str__(self):
+        return f"{self.document_id} page {self.page_number}"
 
 
 class Chunk(models.Model):
